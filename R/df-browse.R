@@ -80,47 +80,67 @@ callColWidgetMod <- function(df, colName, modId, type, disp, dispField) {
   insertUI(
     selector = "#browse-module-container",
     where = "beforeEnd",
-    colWidgetUI(modId, colName, dispField)
+    colWidgetUI(modId, colName, type, dispField)
   )
   
   #return(msg)
 }
 
-colWidgetUI <- function(id, colName, dispField) {
+colWidgetUI <- function(id, colName, type, dispField) {
   ns <- shiny::NS(id)
   msg <- glue::glue('   running colWidgetUI id({id})\n')
-  if (is.na(dispField[1])) {
-    title <- colName
-  } else {
-    title <- glue::glue('{colName} displayed as {dispField[["label"]]}')
-  }
   shiny::tagList(
-    shiny::h3(title),
+    shiny::h4(colName),
+    shiny::verbatimTextOutput(ns("subtitle")),
     shiny::verbatimTextOutput(ns("msg")),
-    shiny::verbatimTextOutput(ns("msg2")),
+    shiny::uiOutput(ns('valSelect')),
+    shiny::uiOutput(ns('dispSelect')),
     shiny::uiOutput(ns('plots'))
     #shiny::pre(msg),
     #shiny::checkboxInput(paste0("ignore-", colName), label = paste("Ignore", colName)),
   )
 }
-colWidget <- function(input, output, session, modId, df, colName, type, disp, dispField) {
-  # sum top y across all x
+factorVarWidget <- function(input, output, session, modId, df, colName, type, disp, dispField) {
   ns <- session$ns
   maxVals <- 4
-  #print('names(df):')
-  #print(names(df))
-  #print('   colName:')
-  #print(colName)
   col <- df[[colName]]
+  lvls <- col %>% table() %>% sort(decreasing = T) %>% names()
+  lvls_cnt <- nrow(lvls)
 
-  output$msg2 <- shiny::renderText({
-    glue::glue('\n{colName}, {type}\n')
-  })
-#  if (type == 'factor') {
-#    factorVarWidget(input, output, session, modId, df, colName, type, disp, dispField)
-#  }
-  if (is.factor(col)) {
-    lvls <- col %>% table() %>% sort(decreasing = T) %>% names()
+  if (is.na(dispField[1])) {
+    subtitle <- glue::glue('{type} field, {lvls_cnt} vals, not displayed')
+  } else {
+    subtitle <- glue::glue('{type} field, {lvls_cnt} vals, displayed as {dispField[["label"]]}')
+  }
+  output$subtitle <- shiny::renderText(subtitle)
+
+  output$valSelect <- shiny::renderUI(shiny::selectizeInput(
+        'e2', '2. Multi-select', choices = lvls, multiple = TRUE
+      ))
+  options <- c(NA, dispFields$var)
+  names(options) <- c('select disp dim', dispFields$label)
+  output$dispSelect <- shiny::renderUI(
+    shiny::selectizeInput('dispSelect', 
+                              choices=options,
+                              label="Display as",
+                              selected=disp
+                              #options=list(labels=dispFields$label, placeholder = 'select a display dim')
+                          ))
+#  output$msg <- shiny::renderText({
+#    #glue::glue('\n{length(lvls())} vals in {cls()} df[{colName}]: {paste(vals, collapse=", ")}\n')
+#    cardinality <- length(unique(col))
+#    glue::glue('\n{colName}, factor w/ {cardinality} levels, top {maxVals}: {paste(lvls[1:maxVals], collapse=", ")}\n')
+#  })
+  # pretty lost, https://shiny.rstudio.com/articles/selectize.html suggests thing below, but doesn't work
+#        options = list(render = I(
+#            '{
+#              option: function(item, escape) {
+#                alert(JSON.stringify(item))
+#                return "<div><strong>" + escape(item.label) + "</strong> (" +
+#                  item.enabled ? item.col : "unassigned" + ")"
+#              }
+#            }'))
+  #shiny::updateSelectizeInput(session, 'dispSelect', server = TRUE, choices = state.name,)
 #    vals <- reactive({
 #      df[[colName]] <- factor(col,levels = lvls())
 #      vals <- unique(as.matrix(col)[,1])
@@ -135,58 +155,63 @@ colWidget <- function(input, output, session, modId, df, colName, type, disp, di
 #      return(vals)
 #    })
 
-    output$msg <- shiny::renderText({
-      #glue::glue('\n{length(lvls())} vals in {cls()} df[{colName}]: {paste(vals, collapse=", ")}\n')
-      cardinality <- length(unique(col))
-      glue::glue('\n{colName}, factor w/ {cardinality} levels, top {maxVals}: {paste(lvls[1:maxVals], collapse=", ")}\n')
-    })
 
-    output$recordsBar <- shiny::renderPlot({
-      df[[colName]] <- factor(df[[colName]],levels = lvls)
-      # reorder factors in decreasing frequency... probably bad idea
-      
-      #dims <- dispFields
-      df %>%  
-        #filter(.data[[colName]] %in% vals) %>%
-        #    makePlot(dims=dims, input=input, plotFunc=smallBarPlot)
-        ggplot2::ggplot(ggplot2::aes_string(x=colName, fill=colName, 
-                                              #forcats::fct_infreq(colName)
-                                              )) +
-          #ggplot2::scale_x_discrete(limits = lvls()) +
-          ggplot2::geom_bar( stat = "count", show.legend=F) +
-          ggplot2::ggtitle(glue::glue('record count by {colName}')) +
-          ggplot2::theme(
-                axis.text.x=ggplot2::element_blank(),
-                axis.title.x=ggplot2::element_blank(),
-                axis.ticks.x=ggplot2::element_blank(),
-                axis.text.y=ggplot2::element_blank(),
-                axis.title.y=ggplot2::element_blank(),
-                axis.ticks.y=ggplot2::element_blank()
-              )
-    })
-    output$distPlot <- shiny::renderPlot({
-      tbl <- df %>% group_by_(colName) %>% summarise(max=max(pop)) %>% arrange(desc(max)) 
-      tbl %>%  
-        ggplot2::ggplot(ggplot2::aes_string(x=colName, fill=colName, y='max')) +
-          ggplot2::scale_x_discrete(limits = tbl[[colName]]) +
-          ggplot2::geom_bar( stat = "sum", show.legend=F) +
-          ggplot2::ggtitle(glue::glue('sum(pop) by {colName}')) +
-          ggplot2::theme(
-                axis.text.x=ggplot2::element_blank(),
-                axis.title.x=ggplot2::element_blank(),
-                axis.ticks.x=ggplot2::element_blank(),
-                axis.text.y=ggplot2::element_blank(),
-                axis.title.y=ggplot2::element_blank(),
-                axis.ticks.y=ggplot2::element_blank()
-              )
-    })
-    output$plots <- shiny::renderUI(
-      shiny::tagList(
-        shiny::plotOutput(ns("recordsBar"), hover=ns("plotHover"), width=250, height=70),
-        shiny::plotOutput(ns("distPlot"), hover=ns("plotHover"), width=250, height=70),
-        shiny::htmlOutput(ns("hoverMsg"))
-      )
+  output$recordsBar <- shiny::renderPlot({
+    df[[colName]] <- factor(df[[colName]],levels = lvls)
+    # reorder factors in decreasing frequency... probably bad idea
+    
+    #dims <- dispFields
+    df %>%  
+      #filter(.data[[colName]] %in% vals) %>%
+      #    makePlot(dims=dims, input=input, plotFunc=smallBarPlot)
+      ggplot2::ggplot(ggplot2::aes_string(x=colName, fill=colName, 
+                                            #forcats::fct_infreq(colName)
+                                            )) +
+        #ggplot2::scale_x_discrete(limits = lvls()) +
+        ggplot2::geom_bar( stat = "count", show.legend=F) +
+        ggplot2::ggtitle(glue::glue('record count by {colName}')) +
+        ggplot2::theme(
+              axis.text.x=ggplot2::element_blank(),
+              axis.title.x=ggplot2::element_blank(),
+              axis.ticks.x=ggplot2::element_blank(),
+              axis.text.y=ggplot2::element_blank(),
+              axis.title.y=ggplot2::element_blank(),
+              axis.ticks.y=ggplot2::element_blank()
+            )
+  })
+  output$distPlot <- shiny::renderPlot({
+    tbl <- df %>% group_by_(colName) %>% summarise(max=max(pop)) %>% arrange(desc(max)) 
+    tbl %>%  
+      ggplot2::ggplot(ggplot2::aes_string(x=colName, fill=colName, y='max')) +
+        ggplot2::scale_x_discrete(limits = tbl[[colName]]) +
+        ggplot2::geom_bar( stat = "sum", show.legend=F) +
+        ggplot2::ggtitle(glue::glue('sum(pop) by {colName}')) +
+        ggplot2::theme(
+              axis.text.x=ggplot2::element_blank(),
+              axis.title.x=ggplot2::element_blank(),
+              axis.ticks.x=ggplot2::element_blank(),
+              axis.text.y=ggplot2::element_blank(),
+              axis.title.y=ggplot2::element_blank(),
+              axis.ticks.y=ggplot2::element_blank()
+            )
+  })
+  output$plots <- shiny::renderUI(
+    shiny::tagList(
+      shiny::plotOutput(ns("recordsBar"), hover=ns("plotHover"), width=250, height=70),
+      shiny::plotOutput(ns("distPlot"), hover=ns("plotHover"), width=250, height=70),
+      shiny::htmlOutput(ns("hoverMsg"))
     )
+  )
+}
+colWidget <- function(input, output, session, modId, df, colName, type, disp, dispField) {
+  ns <- session$ns
+  maxVals <- 4
+  col <- df[[colName]]
+
+  if (type == 'factor') {
+    factorVarWidget(input, output, session, modId, df, colName, type, disp, dispField)
+  }
+  if (is.factor(col)) {
   } else {
     output$msg <- shiny::renderText({
       #glue::glue('\n{length(lvls())} vals in {cls()} df[{colName}]: {paste(vals, collapse=", ")}\n')
