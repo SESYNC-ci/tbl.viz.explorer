@@ -40,22 +40,12 @@ browse <- function(input, output, session, df, colDescs) {
   newColDescs <- apply(
     colDescs, 1,
     function(colDesc) {
-      colName <- colDesc[['name']]
-      disp <- colDesc['disp']
-      type <- colDesc[['type']]
-      if ( ! is.na(disp)) {
-        dispField <- dispFields[dispFields$var == disp,]
-      } else {
-        dispField <- NA
-      }
-      return(callColWidgetMod(df=df, colDesc=colDesc,
-                              colName=colName, 
-                              modId=session$ns(colName), 
-                              disp=disp, type=type, dispField=dispField))
+      newColDesc <- callColWidgetMod(df=df, colDesc=colDesc, modId=session$ns(colDesc[['name']]))
+      return(newColDesc)
     }
-    #names(df)  #[2:3]
   )
-#  output$newColDescs <- shiny::renderTable(newColDescs)
+  browser()
+  output$newColDescs <- shiny::renderTable(newColDescs)
   #cat(glue::glue('varMods got msgs back:\n   {paste(varMods, collapse="\n   ")}\n\n'))
   output$overview <- shiny::renderUI(
     shiny::pre(
@@ -72,49 +62,51 @@ browse <- function(input, output, session, df, colDescs) {
 # found module insert examples:
     # http://shiny.rstudio-staging.com/articles/dynamic-ui.html
     # https://gallery.shinyapps.io/insertUI-modules/
-callColWidgetMod <- function(df, colDesc, colName, modId, type, disp, dispField) {
+callColWidgetMod <- function(df, colDesc, modId) {
   newColDesc <- shiny::callModule(
                   module=colWidget,
-                  id=colName,
+                  id=colDesc[['name']],
                   colDesc=colDesc,
                   modId=modId,
-                  df=df,
-                  colName=colName,
-                  type=type,
-                  disp=disp,
-                  dispField=dispField)
+                  df=df)
   #msg <- glue::glue('      modId({modId}) got back from server({foo})\n')
   #cat(msg, '\n')
   insertUI(
     selector = "#browse-module-container",
     where = "beforeEnd",
-    colWidgetUI(modId, colDesc, colName, type, dispField)
+    colWidgetUI(modId, colDesc)
   )
   return(newColDesc)
 }
 
-colWidgetUI <- function(id, colDesc, colName, type, dispField) {
+colWidgetUI <- function(id, colDesc) {
   ns <- shiny::NS(id)
   msg <- glue::glue('   running colWidgetUI id({id})\n')
   shiny::tagList(
-    shiny::h4(colName),
+    shiny::h4(colDesc[['name']]),
     shiny::verbatimTextOutput(ns("subtitle")),
     shiny::verbatimTextOutput(ns("msg")),
     shiny::uiOutput(ns('valSelect')),
     shiny::uiOutput(ns('dispSelect')),
     shiny::uiOutput(ns('plots'))
     #shiny::pre(msg),
-    #shiny::checkboxInput(paste0("ignore-", colName), label = paste("Ignore", colName)),
   )
 }
-factorVarWidget <- function(input, output, session, modId, df, colDesc, colName, type, disp, dispField) {
+factorVarWidget <- function(input, output, session, modId, df, colDesc) {
   ns <- session$ns
   maxVals <- 4
+  colName <- colDesc[['name']]
   col <- df[[colName]]
-  #col <- df[colDesc[['name']]]
+  type <- colDesc[['type']]
+  disp <- colDesc[['disp']]
   lvls <- col %>% table() %>% sort(decreasing = T) %>% names()
   lvls_cnt <- nrow(lvls)
 
+  if ( ! is.na(disp)) {
+    dispField <- dispFields[dispFields$var == disp,]
+  } else {
+    dispField <- c(NA)
+  }
   if (is.na(dispField[1])) {
     subtitle <- glue::glue('{type} field, {lvls_cnt} vals, not displayed')
   } else {
@@ -128,12 +120,15 @@ factorVarWidget <- function(input, output, session, modId, df, colDesc, colName,
   options <- c(NA, dispFields$var)
   names(options) <- c('select disp dim', dispFields$label)
   output$dispSelect <- shiny::renderUI(
-    shiny::selectizeInput('dispSelect', 
+    shiny::selectizeInput(ns('dispSelect'),
                               choices=options,
                               label="Display as",
-                              selected=disp
+                              selected=colDesc[['disp']]
                               #options=list(labels=dispFields$label, placeholder = 'select a display dim')
                           ))
+  newDisp <- reactive(input$dispSelect)
+  newColDesc <- colDesc
+  newColDesc[['disp']] <- reactive(newDisp())
 #  output$msg <- shiny::renderText({
 #    #glue::glue('\n{length(lvls())} vals in {cls()} df[{colName}]: {paste(vals, collapse=", ")}\n')
 #    cardinality <- length(unique(col))
@@ -210,14 +205,16 @@ factorVarWidget <- function(input, output, session, modId, df, colDesc, colName,
       shiny::htmlOutput(ns("hoverMsg"))
     )
   )
+  return(newColDesc)
 }
-colWidget <- function(input, output, session, modId, df, colDesc, colName, type, disp, dispField) {
+colWidget <- function(input, output, session, modId, df, colDesc) {
   ns <- session$ns
   maxVals <- 4
+  colName <- colDesc[['name']]
   col <- df[[colName]]
 
-  if (type == 'factor') {
-    factorVarWidget(input, output, session, modId, df, colDesc, colName, type, disp, dispField)
+  if (colDesc[['type']] == 'factor') {
+    return(factorVarWidget(input, output, session, modId, df, colDesc))
   }
   if (is.factor(col)) {
   } else {
@@ -272,7 +269,7 @@ colWidget <- function(input, output, session, modId, df, colDesc, colName, type,
   #msg <- glue::glue('   running server modId({modId}) in session({ns("")}\n')
   #return(msg)
   #  output$output <- shiny::renderTable(summary(df))
-  #  return(df)
+  return(colDesc)
 }
 
 makePlot <- function(df, dims, input, plotFunc) {
