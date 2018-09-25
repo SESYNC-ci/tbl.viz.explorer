@@ -14,7 +14,10 @@ browseUI <- function(id, label="Pick from your data") {
     shiny::uiOutput(ns("overview")),
     shiny::tags$div(id = 'browse-module-container'),
     shiny::tableOutput(ns('dispFields')),
-    shiny::tableOutput(ns('colDescs'))
+    shiny::tableOutput(ns('colDescs')),
+    shiny::h4('newColDescs:'),
+    shiny::tableOutput(ns('newColDescs'))
+
 #    shiny::pre({
 #      shiny::textOutput(ns("stuff"))
 #    })
@@ -34,7 +37,7 @@ browse <- function(input, output, session, df, colDescs) {
   output$dispFields <- shiny::renderTable(dispFields)
   output$colDescs <- shiny::renderTable(colDescs)
 
-  varMods <- apply(
+  newColDescs <- apply(
     colDescs, 1,
     function(colDesc) {
       colName <- colDesc[['name']]
@@ -45,10 +48,14 @@ browse <- function(input, output, session, df, colDescs) {
       } else {
         dispField <- NA
       }
-      callColWidgetMod(df=df, colName=colName, modId=session$ns(colName), disp=disp, type=type, dispField=dispField)
+      return(callColWidgetMod(df=df, colDesc=colDesc,
+                              colName=colName, 
+                              modId=session$ns(colName), 
+                              disp=disp, type=type, dispField=dispField))
     }
     #names(df)  #[2:3]
   )
+#  output$newColDescs <- shiny::renderTable(newColDescs)
   #cat(glue::glue('varMods got msgs back:\n   {paste(varMods, collapse="\n   ")}\n\n'))
   output$overview <- shiny::renderUI(
     shiny::pre(
@@ -65,10 +72,11 @@ browse <- function(input, output, session, df, colDescs) {
 # found module insert examples:
     # http://shiny.rstudio-staging.com/articles/dynamic-ui.html
     # https://gallery.shinyapps.io/insertUI-modules/
-callColWidgetMod <- function(df, colName, modId, type, disp, dispField) {
-  foo <- shiny::callModule(
+callColWidgetMod <- function(df, colDesc, colName, modId, type, disp, dispField) {
+  newColDesc <- shiny::callModule(
                   module=colWidget,
                   id=colName,
+                  colDesc=colDesc,
                   modId=modId,
                   df=df,
                   colName=colName,
@@ -80,13 +88,12 @@ callColWidgetMod <- function(df, colName, modId, type, disp, dispField) {
   insertUI(
     selector = "#browse-module-container",
     where = "beforeEnd",
-    colWidgetUI(modId, colName, type, dispField)
+    colWidgetUI(modId, colDesc, colName, type, dispField)
   )
-  
-  #return(msg)
+  return(newColDesc)
 }
 
-colWidgetUI <- function(id, colName, type, dispField) {
+colWidgetUI <- function(id, colDesc, colName, type, dispField) {
   ns <- shiny::NS(id)
   msg <- glue::glue('   running colWidgetUI id({id})\n')
   shiny::tagList(
@@ -100,10 +107,11 @@ colWidgetUI <- function(id, colName, type, dispField) {
     #shiny::checkboxInput(paste0("ignore-", colName), label = paste("Ignore", colName)),
   )
 }
-factorVarWidget <- function(input, output, session, modId, df, colName, type, disp, dispField) {
+factorVarWidget <- function(input, output, session, modId, df, colDesc, colName, type, disp, dispField) {
   ns <- session$ns
   maxVals <- 4
   col <- df[[colName]]
+  #col <- df[colDesc[['name']]]
   lvls <- col %>% table() %>% sort(decreasing = T) %>% names()
   lvls_cnt <- nrow(lvls)
 
@@ -203,13 +211,13 @@ factorVarWidget <- function(input, output, session, modId, df, colName, type, di
     )
   )
 }
-colWidget <- function(input, output, session, modId, df, colName, type, disp, dispField) {
+colWidget <- function(input, output, session, modId, df, colDesc, colName, type, disp, dispField) {
   ns <- session$ns
   maxVals <- 4
   col <- df[[colName]]
 
   if (type == 'factor') {
-    factorVarWidget(input, output, session, modId, df, colName, type, disp, dispField)
+    factorVarWidget(input, output, session, modId, df, colDesc, colName, type, disp, dispField)
   }
   if (is.factor(col)) {
   } else {
