@@ -1,0 +1,1 @@
+build the package (ctrl-shift-B in RStudio) and then run `appDemo()` at the R prompt.
