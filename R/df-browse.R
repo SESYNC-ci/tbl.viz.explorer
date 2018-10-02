@@ -52,7 +52,7 @@ browseUI <- function(id, label="Pick from your data") {
   ns <- shiny::NS(id)
   shiny::tagList(
     shiny::uiOutput(ns("overview")),
-    shiny::tags$div(id = 'browse-module-container'),
+    shiny::uiOutput(ns('widgetContainer')),
     #shiny::tableOutput(ns('dispFields')),
     shiny::h4('mergedConf:'),
     #shiny::uiOutput(ns('mergedConf')),
@@ -81,6 +81,9 @@ browse <- function(input, output, session, df, ConfData) {
       shiny::renderTable(mergedConf())
     )
   )
+  output$widgetContainer <- shiny::renderUI(
+    shiny::tags$div(id = 'browse-module-container')
+  )
   mapWidgets <- reactive({
     apply(
       mergedConf(), 1,
@@ -105,18 +108,6 @@ browse <- function(input, output, session, df, ConfData) {
     shiny::renderUI(shiny::H3("wtf?"))
   })
   return()
-
-  #dispFields$col <- NA
-  #print(dispFields)
-  #print(colDescs)
-
-# won't work if dispFields isn't reactive
-#  dispFields[dispFields$var %in% colDescs[colDescs$disp != '','disp'],'col'] <-
-#    colDescs[!is.na(colDescs$disp),'colId']
-
-  #output$dispFields <- shiny::renderTable(dispFields)
-  #browser()
-  #cat(glue::glue('varMods got msgs back:\n   {paste(varMods, collapse="\n   ")}\n\n'))
   output$overview <- shiny::renderUI(
     shiny::pre(
       glue('{nrow(df)} rows in df, names: {paste(names(df), collapse=", ")}')
