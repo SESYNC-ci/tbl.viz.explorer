@@ -1,11 +1,14 @@
+#' @importFrom data.table transpose
+#' @keywords internal
 confSetup <- function(conf, idName) {
-  out <- data.table::transpose(conf)
+  out <- transpose(conf)
   names(out) <- rownames(conf)
   rownames(out) <- names(conf)
   out[[idName]] <- names(conf)
   out
   #htmlTable(displayConfig)
 }
+
 dc <- data.frame(
   x     = c( disp.label='X',          required=T, enabled=T, numericOk=T, maxCard=Inf),
   y     = c( disp.label='Y',          required=T, enabled=T, numericOk=T, maxCard=Inf),
@@ -62,6 +65,8 @@ browseUI <- function(id, label="Pick from your data") {
   )
 }
 
+#' @importFrom glue glue
+#' @keywords internal
 browse <- function(input, output, session, df, ConfData) {
 
   mergedConf <- reactive({
@@ -88,7 +93,7 @@ browse <- function(input, output, session, df, ConfData) {
       }
     )
   })
-  
+
   output$mapWidgets <- reactive({
     print(dput(mapWidgets()))
     shiny::renderUI(
@@ -106,7 +111,7 @@ browse <- function(input, output, session, df, ConfData) {
   #print(colDescs)
 
 # won't work if dispFields isn't reactive
-#  dispFields[dispFields$var %in% colDescs[colDescs$disp != '','disp'],'col'] <- 
+#  dispFields[dispFields$var %in% colDescs[colDescs$disp != '','disp'],'col'] <-
 #    colDescs[!is.na(colDescs$disp),'colId']
 
   #output$dispFields <- shiny::renderTable(dispFields)
@@ -114,7 +119,7 @@ browse <- function(input, output, session, df, ConfData) {
   #cat(glue::glue('varMods got msgs back:\n   {paste(varMods, collapse="\n   ")}\n\n'))
   output$overview <- shiny::renderUI(
     shiny::pre(
-      glue::glue('{nrow(df)} rows in df, names: {paste(names(df), collapse=", ")}')
+      glue('{nrow(df)} rows in df, names: {paste(names(df), collapse=", ")}')
   ))
   output$stuff <- shiny::renderPrint({
     #print("here comes clientData")
@@ -146,9 +151,11 @@ callColWidgetMod <- function(df, colDesc, modId, mergedConf) {
   return(colWidgetReturn)
 }
 
+#' @importFrom glue glue
+#' @keywords internal
 colWidgetUI <- function(id, colDesc) {
   ns <- shiny::NS(id)
-  msg <- glue::glue('   running colWidgetUI id({id})\n')
+  msg <- glue('   running colWidgetUI id({id})\n')
   shiny::tagList(
     shiny::h4(colDesc[['colId']]),
     shiny::verbatimTextOutput(ns("subtitle")),
@@ -205,21 +212,24 @@ makePlot <- function(df, dims, input, plotFunc) {
 
   return(plot)
 }
+
+#' @importFrom ggplot2 ggplot aes_string geom_line coord_trans
+#' @export
 linePlot <- function(df, input, x, y, color) {
-  plot <- ggplot2::ggplot(df,
-            ggplot2::aes_string(x=x, y=y, color=color)) +
-            ggplot2::geom_line(stat = "summary", fun.y = "sum", alpha=1)
+  plot <- ggplot(df,
+            aes_string(x=x, y=y, color=color)) +
+            geom_line(stat = "summary", fun.y = "sum", alpha=1)
 
   if (input$logTransform == TRUE) {
-    plot <- plot + ggplot2::coord_trans(y="log10")
+    plot <- plot + coord_trans(y="log10")
   }
   return(plot)
 }
 #smallBarPlot <- function(df, input, x, y, color) {
 #  plot <- ggplot2::ggplot(ggplot2::aes_string(x=colName, fill=colName)) +
 #        ggplot2::geom_bar( stat = "count")
-#    
-#    
+#
+#
 #    ggplot2::ggplot(df,
 #            ggplot2::aes_string(x=x, y=y, color=color)) +
 #            ggplot2::geom_line(stat = "summary", fun.y = "sum", alpha=1)
@@ -229,24 +239,27 @@ linePlot <- function(df, input, x, y, color) {
 #  }
 #  return(plot)
 #}
+#' @importFrom ggplot2 facet_grid ggtitle vars
+#' @importFrom glue glue
+#' @export
 facetPlot <- function(df, plot, dims, rows, cols, color) {
   dorows <- dims[dims$var=='rows','enabled'][[1]]
   docols <- dims[dims$var=='cols','enabled'][[1]]
   if (dorows && docols) {
     plot <- plot +
-      ggplot2::facet_grid(rows=ggplot2::vars(.data[[rows]]),
-                          cols=ggplot2::vars(.data[[cols]])) +
-      ggplot2::ggtitle(glue::glue('rows {rows}, cols {cols}, color {color}'))
+      facet_grid(rows=vars(.data[[rows]]),
+                 cols=vars(.data[[cols]])) +
+      ggtitle(glue('rows {rows}, cols {cols}, color {color}'))
   } else if (dorows) {
     plot <- plot +
-      ggplot2::facet_grid(rows=ggplot2::vars(.data[[rows]])) +
-      ggplot2::ggtitle(glue::glue('rows {rows}, color {color}'))
+      facet_grid(rows=vars(.data[[rows]])) +
+      ggtitle(glue('rows {rows}, color {color}'))
   } else if (docols) {
     plot <- plot +
-      ggplot2::facet_grid(cols=ggplot2::vars(.data[[cols]])) +
-      ggplot2::ggtitle(glue::glue('cols {cols}, color {color}'))
+      facet_grid(cols=vars(.data[[cols]])) +
+      ggtitle(glue('cols {cols}, color {color}'))
   } else {
-    plot <- plot + ggplot2::ggtitle(glue::glue('cols {cols}, color {color}'))
+    plot <- plot + ggtitle(glue::glue('cols {cols}, color {color}'))
   }
   return(plot)
 }

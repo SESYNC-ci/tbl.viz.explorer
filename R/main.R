@@ -1,8 +1,3 @@
-library(tidyr)
-library(magrittr)
-library(dplyr)
-library(gapminder)
-
 # You can learn more about package authoring with RStudio at:
 #
 #   http://r-pkgs.had.co.nz/
@@ -15,7 +10,6 @@ library(gapminder)
 
 # ' @include dimAssignments.R
 #' @include df-browse.R
-
 ui <- shiny::fluidPage(
         browseUI("browse"),
         shiny::checkboxInput("logTransform", "Log Transform", FALSE),
@@ -45,8 +39,10 @@ ui <- shiny::fluidPage(
       #shiny::plotOutput("view")
 #    )
 #  )
+#' @importFrom tibble as_tibble
+#' @keywords internal
 shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
-  df <- tibble::as_tibble(df)   # maybe makes things quicker?
+  df <- as_tibble(df)   # maybe makes things quicker?
 
   # above trying to take place of GlobalData = callModule(GlobalModule, "globals")
   # from example code
@@ -62,8 +58,8 @@ shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
       mapConf_=mapConf_)
 
     nuthin <- shiny::callModule(
-        module=tbl.viz.explorer::browse, 
-        id="browse", 
+        module=browse,
+        id="browse",
         session=session,
         ConfData=ConfData,
         df=df)
@@ -104,6 +100,8 @@ shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
 # test with:
 #   hit shift-ctrl-B to rebuild
 #   shiny::runApp(testApp(loadTestData()))
+#' @import gapminder
+#' @keywords internal
 loadTestData <- function() {
   gapminder
 }
@@ -112,26 +110,27 @@ loadTestData <- function() {
 testApp <- function(vdata) {
 
   cd <- data.frame(
-    year      =c( col.label='Year',           type='ordinal'), 
+    year      =c( col.label='Year',           type='ordinal'),
     continent =c( col.label='Continent',      type='factor'),
     country   =c( col.label='Country',        type='factor'),
     lifeExp   =c( col.label='Life Expectancy',type='numeric'),
-    pop       =c( col.label='Population',     type='numeric'), 
+    pop       =c( col.label='Population',     type='numeric'),
     gdpPercap =c( col.label='GDP per capita', type='numeric')
   )
 
   dfcd <- data.frame(
-    year.x          = c( colId='year',      dispId='x'), 
+    year.x          = c( colId='year',      dispId='x'),
     continent.rows  = c( colId='continent', dispId='rows'),
-    continent.color = c( colId='continent', dispId='color') 
+    continent.color = c( colId='continent', dispId='color')
   )
 
-  tbl.viz.explorer::shinyAppWrapper(df=vdata, colConf_=cd, mapConf_=dfcd)
+  shinyAppWrapper(df=vdata, colConf_=cd, mapConf_=dfcd)
 }
 
+#' Demonstration of tbl.viz.explorer
+#' @export
 appDemo <- function() {
   print("don't forget to hit shift-ctrl-B to rebuild package")
-  print("and shift-ctrl-L to reload stuff")
   print("running: shiny::runApp(testApp(loadTestData()))")
   #shiny::runApp(testApp(loadTestData()), display.mode="showcase")
   shiny::runApp(testApp(loadTestData()))
