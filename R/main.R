@@ -112,12 +112,12 @@ loadTestData <- function() {
 testApp <- function(vdata) {
 
   cd <- data.frame(
-    year      =c( label='Year',           type='ordinal'), 
-    continent =c( label='Continent',      type='factor'),
-    country   =c( label='Country',        type='factor'),
-    lifeExp   =c( label='Life Expectancy',type='numeric'),
-    pop       =c( label='Population',     type='numeric'), 
-    gdpPercap =c( label='GDP per capita', type='numeric')
+    year      =c( col.label='Year',           type='ordinal'), 
+    continent =c( col.label='Continent',      type='factor'),
+    country   =c( col.label='Country',        type='factor'),
+    lifeExp   =c( col.label='Life Expectancy',type='numeric'),
+    pop       =c( col.label='Population',     type='numeric'), 
+    gdpPercap =c( col.label='GDP per capita', type='numeric')
   )
 
   dfcd <- data.frame(
