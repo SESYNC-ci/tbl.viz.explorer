@@ -1,5 +1,5 @@
 dispFields = dplyr::tibble(
-    var = c('x', 'y', 'facetRowsBy', 'facetColsBy', 'colorBy')
+    var = c('x', 'y', 'rows', 'cols', 'colorBy')
   , label = c('X', 'Y', 'Facet rows by', 'Facet cols by', 'Color')
   , required = c(T, T, F, F, T)
   , enabled = c(T, T, F, F, T)

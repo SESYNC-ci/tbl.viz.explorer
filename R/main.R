@@ -98,25 +98,25 @@ loadTestData <- function() {
 
 
 testApp <- function(vdata) {
-  dispToDataDefaults <- c(x="lifeExp", y="pop", facetRowsBy='continent', facetColsBy='continent', colorBy='continent')
+  dispToDataDefaults <- c(x="lifeExp", y="pop", rows='continent', cols='continent', colorBy='continent')
   dataToDispDefaults <- names(dispToDataDefaults)
   names(dataToDispDefaults) <- dispToDataDefaults
 
   colDescs <- jsonlite::fromJSON('[
-      { "name":"year", "disp":"x", "type":"ordinal" },
-      { "name":"continent", "disp":"facetRowsBy", "type":"factor" },
-      { "name":"country", "type":"factor", "disp":"" },
-      { "name":"lifeExp", "type":"numeric", "disp":"" },
-      { "name":"pop", "disp":"y","type":"numeric" },
-      { "name":"gdpPercap", "type":"numeric", "disp":"" }
+      { "colId":"year", "disp":"x", "type":"ordinal" },
+      { "colId":"continent", "disp":"rows", "type":"factor" },
+      { "colId":"country", "type":"factor", "disp":"" },
+      { "colId":"lifeExp", "type":"numeric", "disp":"" },
+      { "colId":"pop", "disp":"y","type":"numeric" },
+      { "colId":"gdpPercap", "type":"numeric", "disp":"" }
     ]')
   colDescs[colDescs$disp == '','disp'] <- NA
 
-      #continent=c(name="continent", disp=c("facetRowsBy","color"), type="factor"),
+      #continent=c(name="continent", disp=c("rows","color"), type="factor"),
 #  colDescs <- (
 #      year=list(name='year', disp='x', type='ordinal'), 
-#      #continent=c(name='continent', disp=c('facetRowsBy','color'), type='factor'),
-#      continent=list(name='continent', 'facetRowsBy', type='factor'),
+#      #continent=c(name='continent', disp=c('rows','color'), type='factor'),
+#      continent=list(name='continent', 'rows', type='factor'),
 #      country=list(name='country', type='factor', disp=NA),
 #      lifeExp=list(name='lifeExp', type='numeric', disp=NA),
 #      pop=list(name='pop', disp='y',type='numeric'), 
