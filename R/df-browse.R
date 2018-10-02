@@ -153,12 +153,11 @@ colWidgetUI <- function(id, colDesc) {
     shiny::h4(colDesc[['colId']]),
     shiny::verbatimTextOutput(ns("subtitle")),
     shiny::verbatimTextOutput(ns("msg")),
-##    shiny::h4('dispChoice:'),
-##    shiny::verbatimTextOutput(ns("dispChoice")),
+    shiny::h4('dispChoice:'),
+    shiny::verbatimTextOutput(ns("dispChoice")),
     shiny::uiOutput(ns('valSelect')),
-    shiny::uiOutput(ns('dispSelect'))
-#    shiny::uiOutput(ns('plots'))
-    #shiny::pre(msg),
+    shiny::uiOutput(ns('dispSelect')),
+    shiny::uiOutput(ns('plots'))
   )
 }
 colWidget <- function(input, output, session, modId, df, colDesc, mergedConf) {
@@ -176,18 +175,16 @@ colWidget <- function(input, output, session, modId, df, colDesc, mergedConf) {
                               selected=colDesc[['dispId']]
                               #options=list(labels=dispFields$label, placeholder = 'select a display dim')
                           ))
-#  output$dispChoice <- reactive(input$dispSelect)
-#  dispChoice <- reactive(input$dispSelect)
-#  #return(reactive(colDesc))
-#  cd <- reactive({
-#    if (length(input$dispSelect)) {
-#      browser()
-#      print("got some value for dispSelect!!!!", dispChoice(),'\n')
-#      #browser()
-#      #colDesc[['dispId']] <- input$dispSelect
-#    }
-#  })
-  return(reactive(colDesc))
+  output$dispChoice <- reactive(input$dispSelect)
+  dispChoice <- reactive(input$dispSelect)
+  #return(reactive(colDesc))
+  cd <- reactive({
+    if (length(input$dispSelect)) {
+      #print("got some value for dispSelect!!!!", dispChoice(),'\n')
+      colDesc[['dispId']] <- input$dispSelect
+    }
+  })
+  return(cd)
 }
 
 makePlot <- function(df, dims, input, plotFunc) {
