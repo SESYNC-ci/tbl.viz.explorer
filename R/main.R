@@ -13,15 +13,15 @@ library(gapminder)
 #   Check Package:             'Ctrl + Shift + E'
 #   Test Package:              'Ctrl + Shift + T'
 
-#' @include dimAssignments.R
+# ' @include dimAssignments.R
 #' @include df-browse.R
 
 ui <- shiny::fluidPage(
         browseUI("browse"),
         shiny::checkboxInput("logTransform", "Log Transform", FALSE),
         shiny::tableOutput("dims"),
-        shiny::plotOutput("mainPlot"),
-        dimAssignmentInput("dimAssignment")
+        shiny::plotOutput("mainPlot")
+        #dimAssignmentInput("dimAssignment")
 )
   #tbl.viz.explorer::csvInput("someId"),
   #shiny::titlePanel(label),
@@ -45,29 +45,41 @@ ui <- shiny::fluidPage(
       #shiny::plotOutput("view")
 #    )
 #  )
-shinyAppWrapper <- function(df, logTransform=F, colDescs, dimParams) {
+shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
   df <- tibble::as_tibble(df)   # maybe makes things quicker?
 
+  # above trying to take place of GlobalData = callModule(GlobalModule, "globals")
+  # from example code
+  # from: https://community.rstudio.com/t/best-practices-for-global-external-variables-used-in-a-module/5820/2
+
   appServer <- function(input, output, session) {
+
+    ConfData <- shiny::callModule(
+      module=ConfigManager,
+      id='confMgr',
+      session=session,
+      colConf_=colConf_,
+      mapConf_=mapConf_)
 
     nuthin <- shiny::callModule(
         module=tbl.viz.explorer::browse, 
         id="browse", 
         session=session,
-        df=df, colDescs=colDescs)
+        ConfData=ConfData,
+        df=df)
 
-    dimsr <- shiny::callModule(
-        module=tbl.viz.explorer::dimAssignmentServer,
-        id="dimAssignment",
-        session=session,
-        df=df, colDescs=colDescs, dimParams=dimParams)
-
-    #print(dimsr)
-    output$mainPlot <- renderPlot({
-      makePlot(df=df, dims=dimsr(), input=input, plotFunc=linePlot)
-    })
+#    dimsr <- shiny::callModule(
+#        module=tbl.viz.explorer::dimAssignmentServer,
+#        id="dimAssignment",
+#        session=session,
+#        df=df )
+#
+#    #print(dimsr)
+#    output$mainPlot <- renderPlot({
+#      makePlot(df=df, dims=dimsr(), input=input, plotFunc=linePlot)
+#    })
     output$dftable <- shiny::renderTable(head(df))
-    output$dims <- shiny::renderTable(dimsr())
+#    output$dims <- shiny::renderTable(dimsr())
 
     #shinyBS::addPopover(session, "mainPlot", "Data", content = "should be in a popover", trigger = 'click')
 
@@ -98,32 +110,23 @@ loadTestData <- function() {
 
 
 testApp <- function(vdata) {
-  dispToDataDefaults <- c(x="lifeExp", y="pop", rows='continent', cols='continent', colorBy='continent')
-  dataToDispDefaults <- names(dispToDataDefaults)
-  names(dataToDispDefaults) <- dispToDataDefaults
 
-  colDescs <- jsonlite::fromJSON('[
-      { "colId":"year", "disp":"x", "type":"ordinal" },
-      { "colId":"continent", "disp":"rows", "type":"factor" },
-      { "colId":"country", "type":"factor", "disp":"" },
-      { "colId":"lifeExp", "type":"numeric", "disp":"" },
-      { "colId":"pop", "disp":"y","type":"numeric" },
-      { "colId":"gdpPercap", "type":"numeric", "disp":"" }
-    ]')
-  colDescs[colDescs$disp == '','disp'] <- NA
+  cd <- data.frame(
+    year      =c( label='Year',           type='ordinal'), 
+    continent =c( label='Continent',      type='factor'),
+    country   =c( label='Country',        type='factor'),
+    lifeExp   =c( label='Life Expectancy',type='numeric'),
+    pop       =c( label='Population',     type='numeric'), 
+    gdpPercap =c( label='GDP per capita', type='numeric')
+  )
 
-      #continent=c(name="continent", disp=c("rows","color"), type="factor"),
-#  colDescs <- (
-#      year=list(name='year', disp='x', type='ordinal'), 
-#      #continent=c(name='continent', disp=c('rows','color'), type='factor'),
-#      continent=list(name='continent', 'rows', type='factor'),
-#      country=list(name='country', type='factor', disp=NA),
-#      lifeExp=list(name='lifeExp', type='numeric', disp=NA),
-#      pop=list(name='pop', disp='y',type='numeric'), 
-#      gdpPercap=list(name='gdpPercap', type='numeric', disp=NA)
-#    )
+  dfcd <- data.frame(
+    year.x          = c( colId='year',      dispId='x'), 
+    continent.rows  = c( colId='continent', dispId='rows'),
+    continent.color = c( colId='continent', dispId='color') 
+  )
 
-  tbl.viz.explorer::shinyAppWrapper(df=vdata,colDescs=colDescs, dimParams=dispToDataDefaults)
+  tbl.viz.explorer::shinyAppWrapper(df=vdata, colConf_=cd, mapConf_=dfcd)
 }
 
 appDemo <- function() {

@@ -1,3 +1,11 @@
+confSetup <- function(conf, idName) {
+  out <- data.table::transpose(conf)
+  names(out) <- rownames(conf)
+  rownames(out) <- names(conf)
+  out[[idName]] <- names(conf)
+  out
+  #htmlTable(displayConfig)
+}
 dc <- data.frame(
   x     = c( label='X',          required=T, enabled=T, numericOk=T, maxCard=Inf),
   y     = c( label='Y',          required=T, enabled=T, numericOk=T, maxCard=Inf),
@@ -5,42 +13,28 @@ dc <- data.frame(
   cols =  c( label='Col Facets', required=F, enabled=F, numericOk=F, maxCard=8),
   color = c( label='Color',      required=T, enabled=T, numericOk=F, maxCard=10)
 )
-displayConfig <- data.table::transpose(dc)
-names(displayConfig) <- rownames(dc)
-rownames(displayConfig) <- names(dc)
-displayConfig$dispId <- names(dc)
-#htmlTable(displayConfig)
 
-cd <- data.frame(
-  year      =c( label='Year',           type='ordinal'), 
-  continent =c( label='Continent',      type='factor'),
-  country   =c( label='Country',        type='factor'),
-  lifeExp   =c( label='Life Expectancy',type='numeric'),
-  pop       =c( label='Population',     type='numeric'), 
-  gdpPercap =c( label='GDP per capita', type='numeric')
-)
-colDescs <- data.table::transpose(cd)
-names(colDescs) <- rownames(cd)
-rownames(colDescs) <- names(cd)
-colDescs$colId <- names(cd)
-#htmlTable(colDescs)
+# in globaldata.R
 
-dfcd <- data.frame(
-  year.x          = c( colId='year',      dispId='x'), 
-  continent.rows  = c( colId='continent', dispId='rows'),
-  continent.color = c( colId='continent', dispId='color') 
-)
-configMap <- data.table::transpose(dfcd)
-names(configMap) <- rownames(dfcd)
-rownames(configMap) <- names(dfcd)
-configMap$id <- names(dfcd)
-#htmlTable(configMap)
+# from: https://community.rstudio.com/t/best-practices-for-global-external-variables-used-in-a-module/5820/2
+ConfigManager <- function(input, output, session, colConf_, mapConf_) {
+  colConf <- confSetup(colConf_, 'colId')
+  mapConf <- confSetup(mapConf_, 'mapId')
+  dispConf <- confSetup(dc, 'dispId')
+  mergedConf <- merge(merge(mapConf, colConf, by='colId'), dispConf, by='dispId')
 
-origConfig <- merge(merge(configMap, colDescs, by='colId'), displayConfig, by='dispId')
-#curConfig <- reactive({
-#  origConfig
-#})
+  stash = reactiveValues()
+  stash$colConf = colConf
+  stash$mapConf = mapConf
+  stash$dispConf = dispConf
+  stash$mergedConf = mergedConf
 
+  return(list(
+              GetColConf = reactive(stash$colConf),
+              GetMapConf = reactive(stash$mapConf),
+              GetDispConf = reactive(stash$dispConf),
+              GetMergedConf = reactive(stash$mergedConf)))
+}
 
 topByMaxPop <- function(df, colId, maxVals) {
   # top 5 by Y
@@ -57,8 +51,9 @@ browseUI <- function(id, label="Pick from your data") {
     shiny::uiOutput(ns("overview")),
     shiny::tags$div(id = 'browse-module-container'),
     shiny::tableOutput(ns('dispFields')),
-    shiny::h4('colDescs:'),
-    shiny::tableOutput(ns('colDescs'))
+    shiny::h4('mergedConf:'),
+    #shiny::uiOutput(ns('mergedConf')),
+    shiny::uiOutput(ns('mapWidgets'))
 
 #    shiny::pre({
 #      shiny::textOutput(ns("stuff"))
@@ -67,10 +62,45 @@ browseUI <- function(id, label="Pick from your data") {
   )
 }
 
-browse <- function(input, output, session, df, colDescs) {
+browse <- function(input, output, session, df, ConfData) {
+
+  mergedConf <- reactive({
+    mc <- ConfData$GetMergedConf()
+    #cat('does this log mergedConf?\n')
+    #dput(mc)
+    return(mc)
+  })
+  output$mergedConf <- shiny::renderUI(
+    shiny::tagList(
+      HTML( "colConf: <code>", mergedConf(), "</code><br/>"),
+      shiny::renderTable(mergedConf())
+    )
+  )
+  mapWidgets <- reactive({
+    apply(
+      mergedConf(), 1,
+      function(colDesc) {
+        cd <- callColWidgetMod(df=df, colDesc=colDesc, modId=session$ns(colDesc[['colId']]))
+        #cd(newColDesc)
+        return(cd())
+      }
+    )
+  })
+  
+  output$mapWidgets <- reactive({
+    print(dput(mapWidgets()))
+    shiny::renderUI(
+      shiny::tagList(
+        HTML( "colConf: <code>", dput(mapWidgets()), "</code><br/>")
+        #shiny::renderTable(mapWidgets())
+      )
+    )
+    shiny::renderUI(shiny::H3("wtf?"))
+  })
+  return()
 
   dispFields$col <- NA
-  print(dispFields)
+  #print(dispFields)
   #print(colDescs)
 
 # won't work if dispFields isn't reactive
@@ -78,26 +108,14 @@ browse <- function(input, output, session, df, colDescs) {
 #    colDescs[!is.na(colDescs$disp),'colId']
 
   output$dispFields <- shiny::renderTable(dispFields)
-  output$colDescs <- shiny::renderTable(colDescs)
-
-  newColDescs <- reactive({
-    apply(
-      colDescs, 1,
-      function(colDesc) {
-        newColDesc <- callColWidgetMod(df=df, colDesc=colDesc, modId=session$ns(colDesc[['colId']]))
-        return(newColDesc)
-      }
-    )
-  })
   #browser()
-  output$colDescs <- shiny::renderTable(newColDescs())
   #cat(glue::glue('varMods got msgs back:\n   {paste(varMods, collapse="\n   ")}\n\n'))
   output$overview <- shiny::renderUI(
     shiny::pre(
       glue::glue('{nrow(df)} rows in df, names: {paste(names(df), collapse=", ")}')
   ))
   output$stuff <- shiny::renderPrint({
-    print("here comes clientData")
+    #print("here comes clientData")
     session$clientData
   })
   #output$output <- shiny::renderTable(summary(df))
@@ -108,7 +126,12 @@ browse <- function(input, output, session, df, colDescs) {
     # http://shiny.rstudio-staging.com/articles/dynamic-ui.html
     # https://gallery.shinyapps.io/insertUI-modules/
 callColWidgetMod <- function(df, colDesc, modId) {
-  newColDesc <- shiny::callModule(
+  insertUI(
+    selector = "#browse-module-container",
+    where = "beforeEnd",
+    colWidgetUI(modId, colDesc)
+  )
+  colWidgetReturn <- shiny::callModule(
                   module=colWidget,
                   id=colDesc[['colId']],
                   colDesc=colDesc,
@@ -116,13 +139,8 @@ callColWidgetMod <- function(df, colDesc, modId) {
                   df=df)
   #msg <- glue::glue('      modId({modId}) got back from server({foo})\n')
   #cat(msg, '\n')
-  insertUI(
-    selector = "#browse-module-container",
-    where = "beforeEnd",
-    colWidgetUI(modId, colDesc)
-  )
-  cat(newColDesc())
-  #return(newColDesc)
+  #cat(newColDesc())
+  return(colWidgetReturn)
 }
 
 colWidgetUI <- function(id, colDesc) {
@@ -132,11 +150,11 @@ colWidgetUI <- function(id, colDesc) {
     shiny::h4(colDesc[['colId']]),
     shiny::verbatimTextOutput(ns("subtitle")),
     shiny::verbatimTextOutput(ns("msg")),
-#    shiny::h4('dispChoice:'),
-#    shiny::verbatimTextOutput(ns("dispChoice")),
+##    shiny::h4('dispChoice:'),
+##    shiny::verbatimTextOutput(ns("dispChoice")),
     shiny::uiOutput(ns('valSelect')),
-    shiny::uiOutput(ns('dispSelect')),
-    shiny::uiOutput(ns('plots'))
+    shiny::uiOutput(ns('dispSelect'))
+#    shiny::uiOutput(ns('plots'))
     #shiny::pre(msg),
   )
 }
@@ -146,144 +164,25 @@ colWidget <- function(input, output, session, modId, df, colDesc) {
   colName <- colDesc[['colId']]
   col <- df[[colName]]
 
-  if (colDesc[['type']] == 'factor') {
-    #return(factorVarWidget(input, output, session, modId, df, colDesc))
-    type <- colDesc[['type']]
-    disp <- colDesc[['disp']]
-    lvls <- col %>% table() %>% sort(decreasing = T) %>% names()
-    lvls_cnt <- nrow(lvls)
-
-    if ( ! is.na(disp)) {
-      dispField <- dispFields[dispFields$var == disp,]
-    } else {
-      dispField <- c(NA)
-    }
-    if (is.na(dispField[1])) {
-      subtitle <- glue::glue('{type} field, {lvls_cnt} vals, not displayed')
-    } else {
-      subtitle <- glue::glue('{type} field, {lvls_cnt} vals, displayed as {dispField[["label"]]}')
-    }
-    output$subtitle <- shiny::renderText(subtitle)
-
-    output$valSelect <- shiny::renderUI(shiny::selectizeInput(
-          'e2', '2. Multi-select', choices = lvls, multiple = TRUE
-        ))
-    options <- c(NA, dispFields$var)
-    names(options) <- c('select disp dim', dispFields$label)
-    output$dispSelect <- shiny::renderUI(
-      shiny::selectInput(ns('dispSelect'),
-                                choices=options,
-                                label="Display as",
-                                selected=colDesc[['disp']]
-                                #options=list(labels=dispFields$label, placeholder = 'select a display dim')
-                            ))
-    #output$dispChoice <- input$dispSelect
-    #colDesc[['disp']] <- input$dispSelect | NA
-    #return(colDesc)
-    output$recordsBar <- shiny::renderPlot({
-      df[[colName]] <- factor(df[[colName]],levels = lvls)
-      # reorder factors in decreasing frequency... probably bad idea
-      
-      #dims <- dispFields
-      df %>%  
-        #filter(.data[[colName]] %in% vals) %>%
-        #    makePlot(dims=dims, input=input, plotFunc=smallBarPlot)
-        ggplot2::ggplot(ggplot2::aes_string(x=colName, fill=colName, 
-                                              #forcats::fct_infreq(colName)
-                                              )) +
-          #ggplot2::scale_x_discrete(limits = lvls()) +
-          ggplot2::geom_bar( stat = "count", show.legend=F) +
-          ggplot2::ggtitle(glue::glue('record count by {colName}')) +
-          ggplot2::theme(
-                axis.text.x=ggplot2::element_blank(),
-                axis.title.x=ggplot2::element_blank(),
-                axis.ticks.x=ggplot2::element_blank(),
-                axis.text.y=ggplot2::element_blank(),
-                axis.title.y=ggplot2::element_blank(),
-                axis.ticks.y=ggplot2::element_blank()
-              )
-    })
-    output$distPlot <- shiny::renderPlot({
-      tbl <- df %>% group_by_(colName) %>% summarise(max=max(pop)) %>% arrange(desc(max)) 
-      tbl %>%  
-        ggplot2::ggplot(ggplot2::aes_string(x=colName, fill=colName, y='max')) +
-          ggplot2::scale_x_discrete(limits = tbl[[colName]]) +
-          ggplot2::geom_bar( stat = "sum", show.legend=F) +
-          ggplot2::ggtitle(glue::glue('sum(pop) by {colName}')) +
-          ggplot2::theme(
-                axis.text.x=ggplot2::element_blank(),
-                axis.title.x=ggplot2::element_blank(),
-                axis.ticks.x=ggplot2::element_blank(),
-                axis.text.y=ggplot2::element_blank(),
-                axis.title.y=ggplot2::element_blank(),
-                axis.ticks.y=ggplot2::element_blank()
-              )
-    })
-    output$plots <- shiny::renderUI(
-      shiny::tagList(
-        shiny::plotOutput(ns("recordsBar"), hover=ns("plotHover"), width=250, height=70),
-        shiny::plotOutput(ns("distPlot"), hover=ns("plotHover"), width=250, height=70),
-        shiny::htmlOutput(ns("hoverMsg"))
-      )
-    )
-  }
-  if (is.factor(col)) {
-  } else {
-    output$msg <- shiny::renderText({
-      #glue::glue('\n{length(lvls())} vals in {cls()} df[{colName}]: {paste(vals, collapse=", ")}\n')
-      cardinality <- length(unique(col))
-      glue::glue('\n{colName}, {class(col)} w/ {cardinality} vals, range: {min(col)} - {max(col)}\n')
-    })
-    output$distPlot <- shiny::renderPlot({
-      df %>%  
-        #filter(.data[[colName]] %in% vals) %>%
-        #    makePlot(dims=dims, input=input, plotFunc=smallBarPlot)
-        ggplot2::ggplot(ggplot2::aes_string(x=colName)) +
-          ggplot2::geom_histogram() +
-          #ggplot2::scale_x_continuous(trans="log1p", expand=c(0,0)) +
-          #ggplot2::coord_trans(y="log10") +
-          ggplot2::ggtitle(glue::glue('histogram by {colName}')) +
-          ggplot2::theme(
-            axis.text.x = ggplot2::element_text(angle = 315, hjust = 0)
-          )
-            #plot.margin = ggplot2::margin(10, 40, 10, 10))
-#                axis.text.x=ggplot2::element_blank(),
-#                axis.title.x=ggplot2::element_blank(),
-#                axis.ticks.x=ggplot2::element_blank(),
-#                axis.text.y=ggplot2::element_blank(),
-#                axis.title.y=ggplot2::element_blank(),
-#                axis.ticks.y=ggplot2::element_blank()
-#              )
-    })
-    output$plots <- shiny::renderUI(
-      shiny::plotOutput(ns("distPlot"), width=550, height=170)
-    )
-  }
-  #vals <- reactive({
-  #return(vals)
-  #})
-  output$hoverMsg <- shiny::renderText({
-    plotHover <- input$plotHover
-    #print(dput(plotHover))
-    col <- df[,colName]
-    #print(str(col))
-    if (is.null(plotHover$x)) return("")
-    lvls <- levels(df[[colName]])
-    name <- lvls[round(plotHover$x)]
-    HTML(
-         #"head(col) <code>", dput(head(col)), "</code><br/>",
-         "hover info: <code>", dput(plotHover), "</code><br/>",
-         "lvls <code>", dput(lvls), "</code><br/>",
-         "name <code>", name, "</code><br/>"
-         )
-  })
-  #msg <- glue::glue('   running server modId({modId}) in session({ns("")}\n')
-  #return(msg)
-  #  output$output <- shiny::renderTable(summary(df))
+  output$dispSelect <- shiny::renderUI(
+    shiny::selectInput(ns('dispSelect'),
+                              choices=options,
+                              label="Display as",
+                              selected=colDesc[['disp']]
+                              #options=list(labels=dispFields$label, placeholder = 'select a display dim')
+                          ))
   output$dispChoice <- reactive(input$dispSelect)
   dispChoice <- reactive(input$dispSelect)
-  return(dispChoice)
-  return(colDesc)
+  #return(reactive(colDesc))
+  cd <- reactive({
+    if (length(input$dispSelect)) {
+      browser()
+      print("got some value for dispSelect!!!!", dispChoice(),'\n')
+      #browser()
+      colDesc[['dispId']] <- input$dispSelect
+    }
+  })
+  return(cd)
 }
 
 makePlot <- function(df, dims, input, plotFunc) {
@@ -349,38 +248,3 @@ facetPlot <- function(df, plot, dims, rows, cols, color) {
   }
   return(plot)
 }
-#  colDesc <- reactive({
-#    newColDesc <- colDesc
-#    return(newColDesc)
-#  })
-
-#  output$msg <- shiny::renderText({
-#    #glue::glue('\n{length(lvls())} vals in {cls()} df[{colName}]: {paste(vals, collapse=", ")}\n')
-#    cardinality <- length(unique(col))
-#    glue::glue('\n{colName}, factor w/ {cardinality} levels, top {maxVals}: {paste(lvls[1:maxVals], collapse=", ")}\n')
-#  })
-  # pretty lost, https://shiny.rstudio.com/articles/selectize.html suggests thing below, but doesn't work
-#        options = list(render = I(
-#            '{
-#              option: function(item, escape) {
-#                alert(JSON.stringify(item))
-#                return "<div><strong>" + escape(item.label) + "</strong> (" +
-#                  item.enabled ? item.col : "unassigned" + ")"
-#              }
-#            }'))
-  #shiny::updateSelectizeInput(session, 'dispSelect', server = TRUE, choices = state.name,)
-#    vals <- reactive({
-#      df[[colName]] <- factor(col,levels = lvls())
-#      vals <- unique(as.matrix(col)[,1])
-#      if (length(vals) > 10) {
-#        tbl <- df %>% group_by_(colName) %>% summarise(max=max(pop)) %>% top_n(maxVals, max)
-#        #vals <- whichVals(df, colName, topByMaxPop, 5)
-#        vals <- as.matrix(tbl)[,1]
-#      }
-#      if(!(length(vals) <= 10)) {
-#        stop('problem with vals')
-#      }
-#      return(vals)
-#    })
-
-
