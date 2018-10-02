@@ -10,11 +10,11 @@ confSetup <- function(conf, idName) {
 }
 
 dc <- data.frame(
-  x     = c( label='X',          required=T, enabled=T, numericOk=T, maxCard=Inf),
-  y     = c( label='Y',          required=T, enabled=T, numericOk=T, maxCard=Inf),
-  rows =  c( label='Row Facets', required=F, enabled=F, numericOk=F, maxCard=15),
-  cols =  c( label='Col Facets', required=F, enabled=F, numericOk=F, maxCard=8),
-  color = c( label='Color',      required=T, enabled=T, numericOk=F, maxCard=10)
+  x     = c( disp.label='X',          required=T, enabled=T, numericOk=T, maxCard=Inf),
+  y     = c( disp.label='Y',          required=T, enabled=T, numericOk=T, maxCard=Inf),
+  rows =  c( disp.label='Row Facets', required=F, enabled=F, numericOk=F, maxCard=15),
+  cols =  c( disp.label='Col Facets', required=F, enabled=F, numericOk=F, maxCard=8),
+  color = c( disp.label='Color',      required=T, enabled=T, numericOk=F, maxCard=10)
 )
 
 # in globaldata.R
@@ -53,7 +53,7 @@ browseUI <- function(id, label="Pick from your data") {
   shiny::tagList(
     shiny::uiOutput(ns("overview")),
     shiny::tags$div(id = 'browse-module-container'),
-    shiny::tableOutput(ns('dispFields')),
+    #shiny::tableOutput(ns('dispFields')),
     shiny::h4('mergedConf:'),
     #shiny::uiOutput(ns('mergedConf')),
     shiny::uiOutput(ns('mapWidgets'))
@@ -85,7 +85,9 @@ browse <- function(input, output, session, df, ConfData) {
     apply(
       mergedConf(), 1,
       function(colDesc) {
-        cd <- callColWidgetMod(df=df, colDesc=colDesc, modId=session$ns(colDesc[['colId']]))
+        cd <- callColWidgetMod(df=df, colDesc=colDesc, 
+                               modId=session$ns(colDesc[['colId']]),
+                               mergedConf=mergedConf)
         #cd(newColDesc)
         return(cd())
       }
@@ -104,7 +106,7 @@ browse <- function(input, output, session, df, ConfData) {
   })
   return()
 
-  dispFields$col <- NA
+  #dispFields$col <- NA
   #print(dispFields)
   #print(colDescs)
 
@@ -112,7 +114,7 @@ browse <- function(input, output, session, df, ConfData) {
 #  dispFields[dispFields$var %in% colDescs[colDescs$disp != '','disp'],'col'] <-
 #    colDescs[!is.na(colDescs$disp),'colId']
 
-  output$dispFields <- shiny::renderTable(dispFields)
+  #output$dispFields <- shiny::renderTable(dispFields)
   #browser()
   #cat(glue::glue('varMods got msgs back:\n   {paste(varMods, collapse="\n   ")}\n\n'))
   output$overview <- shiny::renderUI(
@@ -130,7 +132,7 @@ browse <- function(input, output, session, df, ConfData) {
 # found module insert examples:
     # http://shiny.rstudio-staging.com/articles/dynamic-ui.html
     # https://gallery.shinyapps.io/insertUI-modules/
-callColWidgetMod <- function(df, colDesc, modId) {
+callColWidgetMod <- function(df, colDesc, modId, mergedConf) {
   insertUI(
     selector = "#browse-module-container",
     where = "beforeEnd",
@@ -141,6 +143,7 @@ callColWidgetMod <- function(df, colDesc, modId) {
                   id=colDesc[['colId']],
                   colDesc=colDesc,
                   modId=modId,
+                  mergedConf=mergedConf,
                   df=df)
   #msg <- glue::glue('      modId({modId}) got back from server({foo})\n')
   #cat(msg, '\n')
@@ -165,31 +168,33 @@ colWidgetUI <- function(id, colDesc) {
     #shiny::pre(msg),
   )
 }
-colWidget <- function(input, output, session, modId, df, colDesc) {
+colWidget <- function(input, output, session, modId, df, colDesc, mergedConf) {
   ns <- session$ns
   maxVals <- 4
   colName <- colDesc[['colId']]
   col <- df[[colName]]
 
+  options <- c(NA, mergedConf()$dispId)
+  names(options) <- c('select disp dim', mergedConf()$disp.label)
   output$dispSelect <- shiny::renderUI(
     shiny::selectInput(ns('dispSelect'),
                               choices=options,
                               label="Display as",
-                              selected=colDesc[['disp']]
+                              selected=colDesc[['dispId']]
                               #options=list(labels=dispFields$label, placeholder = 'select a display dim')
                           ))
-  output$dispChoice <- reactive(input$dispSelect)
-  dispChoice <- reactive(input$dispSelect)
-  #return(reactive(colDesc))
-  cd <- reactive({
-    if (length(input$dispSelect)) {
-      browser()
-      print("got some value for dispSelect!!!!", dispChoice(),'\n')
-      #browser()
-      colDesc[['dispId']] <- input$dispSelect
-    }
-  })
-  return(cd)
+#  output$dispChoice <- reactive(input$dispSelect)
+#  dispChoice <- reactive(input$dispSelect)
+#  #return(reactive(colDesc))
+#  cd <- reactive({
+#    if (length(input$dispSelect)) {
+#      browser()
+#      print("got some value for dispSelect!!!!", dispChoice(),'\n')
+#      #browser()
+#      #colDesc[['dispId']] <- input$dispSelect
+#    }
+#  })
+  return(reactive(colDesc))
 }
 
 makePlot <- function(df, dims, input, plotFunc) {
