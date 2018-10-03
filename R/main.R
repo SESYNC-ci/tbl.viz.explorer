@@ -15,30 +15,8 @@ ui <- shiny::fluidPage(
         shiny::checkboxInput("logTransform", "Log Transform", FALSE),
         shiny::tableOutput("dims"),
         shiny::plotOutput("mainPlot")
-        #dimAssignmentInput("dimAssignment")
 )
-  #tbl.viz.explorer::csvInput("someId"),
-  #shiny::titlePanel(label),
-#  shiny::sidebarLayout(
-#    shiny::sidebarPanel(
-#      shiny::tags$div(id = 'browse-module-container'),
-#      shiny::checkboxInput("logTransform", "Log Transform", FALSE)
-#    ),
-#    shiny::mainPanel(
-#      browseUI("browse"),
-#      shiny::hr(),
-#      #shiny::plotOutput("slPlot"),
-#      shiny::plotOutput("mainPlot"),
-#      shiny::tableOutput("dftable")
 
-# use this for brushing!!!
-#      shiny::h4("linkedScatterInput:"),
-#      linkedScatterUI("scatters"),
-#      shiny::textOutput("summary"),
-#      shiny::p("after summary")
-      #shiny::plotOutput("view")
-#    )
-#  )
 #' @importFrom tibble as_tibble
 #' @keywords internal
 shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
@@ -50,7 +28,7 @@ shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
 
   appServer <- function(input, output, session) {
 
-    ConfData <- shiny::callModule(
+    confData <- shiny::callModule(
       module=ConfigManager,
       id='confMgr',
       session=session,
@@ -61,38 +39,9 @@ shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
         module=browse,
         id="browse",
         session=session,
-        ConfData=ConfData,
+        confData=confData,
         df=df)
-
-#    dimsr <- shiny::callModule(
-#        module=tbl.viz.explorer::dimAssignmentServer,
-#        id="dimAssignment",
-#        session=session,
-#        df=df )
-#
-#    #print(dimsr)
-#    output$mainPlot <- renderPlot({
-#      makePlot(df=df, dims=dimsr(), input=input, plotFunc=linePlot)
-#    })
     output$dftable <- shiny::renderTable(head(df))
-#    output$dims <- shiny::renderTable(dimsr())
-
-    #shinyBS::addPopover(session, "mainPlot", "Data", content = "should be in a popover", trigger = 'click')
-
-    #output$slPlot <- renderPlot({p})
-    #output$dimtable <- shiny::renderTable(da$dims())
-#      tbl.viz.explorer::dimAssignmentInput(ns("dimAssignment"), "Pick dim assignments",
-#                                              params=c(df,dimParams)),
-# bring this back to figure out brushing:
-#    dfl <- callModule(tbl.viz.explorer::linkedScatter, "scatters", reactive(ggplot2::mpg),
-#      left = reactive(c("cty", "hwy")),
-#      right = reactive(c("drv", "hwy"))
-#    )
-
-    #output$data <- renderTable(dfl()[1:5,])
-#    output$summary <- renderText({
-#      sprintf("%d observation(s) selected", nrow(dplyr::filter(dfl(), selected_)))
-#    })
   }
   return(shiny::shinyApp(ui, appServer))
 }
