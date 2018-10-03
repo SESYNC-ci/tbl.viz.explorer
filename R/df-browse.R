@@ -151,13 +151,13 @@ colWidget <- function(input, output, session, modId, df, colDesc, confData) {
                               #options=list(labels=dispFields$label, placeholder = 'select a display dim')
                           ))
 
-  observeEvent(input$dispSelect, {
-    #req(input$dispSelect)
-    #browser()
-    mc <- confData$getMapConf()
-    mc[mc$coldId==colDesc[['colId']],'dispId']] <- input$dispSelect # gets more than one, doesn't work
-    confData$setMapConf(mc)
-  })
+#  observeEvent(input$dispSelect, {
+#    #req(input$dispSelect)
+#    #browser()
+#    mc <- confData$getMapConf()
+#    mc[mc$coldId==colDesc[['colId']],'dispId']] <- input$dispSelect # gets more than one, doesn't work
+#    confData$setMapConf(mc)
+#  })
 
   output$dispChoice <- reactive(input$dispSelect)
   dispChoice <- reactive(input$dispSelect)

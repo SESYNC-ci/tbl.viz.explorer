@@ -22,5 +22,6 @@ Imports:
 Collate:
     'csvInputShinyMod.R'
     'df-browse.R'
+    'dimAssignments.R'
     'main.R'
 RoxygenNote: 6.1.0
