@@ -1,8 +1,8 @@
 dispFields = dplyr::tibble(
   var = c('x', 'y', 'facetRowsBy', 'facetColsBy', 'colorBy')
           , label = c('X', 'Y', 'Facet rows by', 'Facet cols by', 'Color')
-          , required = c(T, T, F, F, T)
-          , include = c(T, T, F, F, T)
+          , required = c(T, T, F, F, F)
+          , include = c(T, T, F, F, F)
 )
 getDefaultsTibble <- function(...) { tidyr::gather(dplyr::tibble(...))}
 dimAssignmentInput <- function(id, label="Assign data dims to display dims") {
@@ -16,10 +16,10 @@ dimAssignmentServer <- function(input, output, session, df, dimParams) {
 
   selectVal <- reactive({
     # selectVal is a reactive that contains a named vector or list of functions
-    # (named for each dimParam) 
+    # (named for each dimParam)
     # each of those functions retrieves the value for that param from input
     # if it hasn't been set in input, get it from default dimParams instead
-    mapply(function(dn) 
+    mapply(function(dn)
             function() ifelse(length(input[[dn]]), input[[dn]], dimParams[[dn]]),
             dispFields$var)
   })
@@ -27,7 +27,7 @@ dimAssignmentServer <- function(input, output, session, df, dimParams) {
     dims$default <- vapply(dims$var, function(dn) dimParams[[dn]], 'a')
     dims$val <- vapply(dims$var, function(dn) selectVal()[[dn]](), 'a')
     dims$include <- vapply(
-        dims$var, 
+        dims$var,
         function(dn) {
           id <- glue::glue('include_{dn}')
           ifelse(length(input[[id]]), input[[id]], dims[dims$var==dn,'include'][[1]])
@@ -53,6 +53,10 @@ dimAssignmentServer <- function(input, output, session, df, dimParams) {
       # shinyjs::disable(cbId)   not working
       # wanted to add for required but disable
     }
+    # FIXME if dimRow$val is a factor, add a selectizeInput (may find help in selectLevelServer)
+    # FIXME when the selectField changes, uncheck the cbId checkbox
+    # FIXME move the cbId checkbox to below the (optional) selectizeInput
+    # FIXME arbitrarily limit number of levels in defualt selection for this input
     els <- c(els, list(selectField))
   }
   selectBoxes <- reactive({

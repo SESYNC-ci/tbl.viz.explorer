@@ -52,7 +52,7 @@ getPlot <- function(df, dims, input) {
   print(nrow(df))
 
   plot <- ggplot2::ggplot(df,
-            ggplot2::aes_string(x=x, y=y, color=color)) +
+            ggplot2::aes_string(x=x, y=y, color=color)) + # FIXME color does not respond to check box
             ggplot2::geom_line(stat = "summary", fun.y = "sum", alpha=1)
 
   if (input$logTransform == TRUE) {
