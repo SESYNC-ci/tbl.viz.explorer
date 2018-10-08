@@ -49,7 +49,6 @@ shinyAppWrapper <- function(df, colConf_, mapConf_, logTransform=F ) {
 # test with:
 #   hit shift-ctrl-B to rebuild
 #   shiny::runApp(testApp(loadTestData()))
-#' @import gapminder
 #' @keywords internal
 loadTestData <- function() {
   gapminder

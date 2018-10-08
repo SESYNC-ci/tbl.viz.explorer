@@ -17,7 +17,8 @@ Imports:
   ggplot2,
   shiny,
   magrittr,
-  RColorBrewer,
+  RColorBrewer
+Depends:
   gapminder
 Collate:
     'csvInputShinyMod.R'
