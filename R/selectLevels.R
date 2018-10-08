@@ -1,26 +1,19 @@
-library(tidyr)
-library(magrittr)
-library(dplyr)
-
-hello <-function() {
-  return("Hello, World!")
-}
-
 varValueSelectionInput <- function(id) {
   ns <- shiny::NS(id)
   shiny::uiOutput(ns("varValueSelection"))
 }
 
+#' @importFrom glue glue
 varValueSelectionServer <- function(input, output, session, df) {
   ns <- session$ns
 
   varInputs <- reactive({
     dfVars <- names(df)
-    cat(glue::glue("\n\n(wtf?) doing varValueSelectionServer for {ns('foo ')}\n\n"))
+    cat(glue("\n\n(wtf?) doing varValueSelectionServer for {ns('foo ')}\n\n"))
     mapply(function(varName) {
         shiny::callModule(
-          module=tbl.viz.explorer::selectLevelsServer,
-          id=ns(glue::glue('input_for_{varName}')),
+          module=selectLevelsServer,
+          id=ns(glue('input_for_{varName}')),
           session=session,
           df=df,
           varName=varName)
@@ -40,18 +33,18 @@ varValueSelectionServer <- function(input, output, session, df) {
   })
 }
 
-#' @export
 selectLevelsInput <- function(id) {
   ns <- shiny::NS(id)
     #shiny::tableOutput(ns("main")),
   shiny::textOutput(ns('selectLevelsContent'))
 }
 
+#' @importFrom glue glue
 selectLevelsServer <- function(input, output, session, df, varName) {
   ns <- session$ns
-  cat(glue::glue("\n\n(rrr) doing selectLevelsServer for {ns(varName)}\n\n"))
+  cat(glue("\n\n(rrr) doing selectLevelsServer for {ns(varName)}\n\n"))
   output$selectLevelsContent <- shiny::renderText(
-    glue::glue('{length(unique(df[,varName])) vals for {varName}'))
+    glue('{length(unique(df[,varName])) vals for {varName}'))
 #  cnts <- df %>% dplyr::group_by(!!as.name(x)) %>% summarise(n=n()) %>% top_n(10)
 #  ctbl <- shiny::renderTable(cnts)
 #  output$main <- ctbl

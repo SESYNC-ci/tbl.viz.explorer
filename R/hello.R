@@ -1,20 +1,4 @@
-library(tidyr)
-library(magrittr)
-library(dplyr)
-library(gapminder)
-
-# You can learn more about package authoring with RStudio at:
-#
-#   http://r-pkgs.had.co.nz/
-#
-# Some useful keyboard shortcuts for package authoring:
-#
-#   Build and Reload Package:  'Ctrl + Shift + B'
-#   Check Package:             'Ctrl + Shift + E'
-#   Test Package:              'Ctrl + Shift + T'
-
 #' @include selectLevels.R
-
 ui <- shiny::fluidPage(
   #tbl.viz.explorer::csvInput("someId"),
   #shiny::titlePanel(label),
@@ -38,6 +22,9 @@ ui <- shiny::fluidPage(
     )
   )
 )
+
+#' @importFrom ggplot2 ggplot aes_string geom_line coord_trans facet_grid ggtitle vars
+#' @importFrom glue glue
 getPlot <- function(df, dims, input) {
   print(dims)
   d <- dims$val
@@ -51,36 +38,38 @@ getPlot <- function(df, dims, input) {
   print(c(x,y,color, rows,cols))
   print(nrow(df))
 
-  plot <- ggplot2::ggplot(df,
-            ggplot2::aes_string(x=x, y=y, color=color)) + # FIXME color does not respond to check box
-            ggplot2::geom_line(stat = "summary", fun.y = "sum", alpha=1)
+  plot <- ggplot(df,
+            aes_string(x=x, y=y, color=color)) + # FIXME color does not respond to check box
+            geom_line(stat = "summary", fun.y = "sum", alpha=1)
 
   if (input$logTransform == TRUE) {
-    plot <- plot + ggplot2::coord_trans(y="log10")
+    plot <- plot + coord_trans(y="log10")
   }
 
   dorows <- dims[dims$var=='facetRowsBy','include'][[1]]
   docols <- dims[dims$var=='facetColsBy','include'][[1]]
   if (dorows && docols) {
     plot <- plot +
-      ggplot2::facet_grid(rows=ggplot2::vars(.data[[rows]]),
-                          cols=ggplot2::vars(.data[[cols]])) +
-      ggplot2::ggtitle(glue::glue('rows {rows}, cols {cols}, color {color}'))
+      facet_grid(rows=vars(.data[[rows]]),
+                 cols=vars(.data[[cols]])) +
+      ggtitle(glue('rows {rows}, cols {cols}, color {color}'))
   } else if (dorows) {
     plot <- plot +
-      ggplot2::facet_grid(rows=ggplot2::vars(.data[[rows]])) +
-      ggplot2::ggtitle(glue::glue('rows {rows}, color {color}'))
+      facet_grid(rows=vars(.data[[rows]])) +
+      ggtitle(glue('rows {rows}, color {color}'))
   } else if (docols) {
     plot <- plot +
-      ggplot2::facet_grid(cols=ggplot2::vars(.data[[cols]])) +
-      ggplot2::ggtitle(glue::glue('cols {cols}, color {color}'))
+      facet_grid(cols=vars(.data[[cols]])) +
+      ggtitle(glue('cols {cols}, color {color}'))
   } else {
-    plot <- plot + ggplot2::ggtitle(glue::glue('cols {cols}, color {color}'))
+    plot <- plot + ggtitle(glue('cols {cols}, color {color}'))
   }
   return(plot)
 }
+
+#' @importFrom tibble as_tibble
 shinyAppWrapper <- function(df, dimParams) {
-  df <- tibble::as_tibble(df)   # maybe makes things quicker?
+  df <- as_tibble(df)   # maybe makes things quicker?
 
   appServer <- function(input, output, session) {
 
@@ -91,7 +80,7 @@ shinyAppWrapper <- function(df, dimParams) {
 #        df=df)
 
     dimsr <- shiny::callModule(
-        module=tbl.viz.explorer::dimAssignmentServer,
+        module=dimAssignmentServer,
         id="dimAssignment",
         session=session,
         df=df, dimParams=dimParams)
@@ -128,9 +117,10 @@ loadTestData <- function() {
 }
 
 testApp <- function(vdata) {
-  tbl.viz.explorer::shinyAppWrapper(df=vdata,dimParams=c(x="year", y="pop", facetRowsBy='continent', facetColsBy='continent', colorBy='continent'))
+  shinyAppWrapper(df=vdata,dimParams=c(x="year", y="pop", facetRowsBy='continent', facetColsBy='continent', colorBy='continent'))
 }
 
+#' @export
 appDemo <- function() {
   print("don't forget to hit shift-ctrl-B to rebuild package")
   print("running: shiny::runApp(testApp(loadTestData()))")
@@ -142,4 +132,3 @@ csvDemo <- function(){
   loc <- system.file("examples","moduleExample", package = "tbl.viz.explorer")
   shiny::shinyAppDir(loc)
 }
-

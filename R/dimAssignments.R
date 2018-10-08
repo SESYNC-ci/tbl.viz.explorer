@@ -4,12 +4,18 @@ dispFields = dplyr::tibble(
           , required = c(T, T, F, F, F)
           , include = c(T, T, F, F, F)
 )
-getDefaultsTibble <- function(...) { tidyr::gather(dplyr::tibble(...))}
+
+#' @importFrom tidyr gather
+#' @importFrom tibble tibble
+
+getDefaultsTibble <- function(...) {gather(tibble(...))}
+
 dimAssignmentInput <- function(id, label="Assign data dims to display dims") {
   ns <- shiny::NS(id)
   shiny::uiOutput(ns("dataDimSelect"))
 }
 
+#' @importFrom glue glue
 dimAssignmentServer <- function(input, output, session, df, dimParams) {
   dims <- dispFields
   choices <- names(df)
@@ -29,7 +35,7 @@ dimAssignmentServer <- function(input, output, session, df, dimParams) {
     dims$include <- vapply(
         dims$var,
         function(dn) {
-          id <- glue::glue('include_{dn}')
+          id <- glue('include_{dn}')
           ifelse(length(input[[id]]), input[[id]], dims[dims$var==dn,'include'][[1]])
         }, F)
     return(dims)
@@ -47,7 +53,7 @@ dimAssignmentServer <- function(input, output, session, df, dimParams) {
                           selected = dimRow$val
                         )
     if(!dimRow['required']) {
-      cbId <- glue::glue('include_{dimRow$var}')
+      cbId <- glue('include_{dimRow$var}')
       els <- c(els,
         list(shiny::checkboxInput(ns(cbId), label = dimRow$label, value = dimRow$include)))
       # shinyjs::disable(cbId)   not working
@@ -86,6 +92,7 @@ linkedScatterUI <- function(id) {
     shiny::plotOutput(ns("plot2"), brush = ns("brush"))
   )
 }
+
 linkedScatter <- function(input, output, session, data, left, right) {
   cat('\nin linkedScatter\n')
   # Yields the data frame with an additional column "selected_"
@@ -117,17 +124,12 @@ linkedScatter <- function(input, output, session, data, left, right) {
   return(dataWithSelection)
 }
 
+#' @importFrom ggplot2 ggplot geom_point scale_color_manual aes aes_string
 scatterPlot <- function(data, cols) {
-  ggplot2::ggplot(data, ggplot2::aes_string(x = cols[1], y = cols[2])) +
-    ggplot2::geom_point(ggplot2::aes(color = selected_)) +
-    ggplot2::scale_color_manual(values = c("black", "#66D65C"), guide = FALSE)
+  ggplot(data, aes_string(x = cols[1], y = cols[2])) +
+    geom_point(aes(color = selected_)) +
+    scale_color_manual(values = c("black", "#66D65C"), guide = FALSE)
 }
-
-
-
-
-
-
 
 kmeansClusInput <- function(id, label) {
   ns <- shiny::NS(id)
@@ -144,6 +146,7 @@ kmeansClusInput <- function(id, label) {
   )
 }
 
+#' @importFrom RColorBrewer brewer.pal
 kmeansClus <- function(input, output, session) {
   innerResult <- callModule(colorPicker, "col", bar="from kmeansClus")
 
@@ -157,7 +160,7 @@ kmeansClus <- function(input, output, session) {
   })
 
   output$plot1 <- renderPlot({
-    cols <- RColorBrewer::brewer.pal(input$clusters, innerResult$scheme)[clusters()$cluster]
+    cols <- brewer.pal(input$clusters, innerResult$scheme)[clusters()$cluster]
     par(mar = c(5.1, 4.1, 0, 1))
     plot(selectedData(),
          col = cols,
@@ -180,14 +183,11 @@ colorPickerInput <- function(id, label = "Coloring", params ) {
 }
 
 # Module server function
+#' @importFrom glue glue
 colorPicker <- function(input, output, session, bar) {
   shiny::observe({
-    msg <- glue::glue("{bar} Color scheme was selected {input$scheme}")
+    msg <- glue("{bar} Color scheme was selected {input$scheme}")
     cat(msg, "\n")
   })
   return(input)
 }
-
-
-
-

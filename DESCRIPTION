@@ -15,10 +15,12 @@ Imports:
   ggplot2,
   shiny,
   magrittr,
-  RColorBrewer,
+  RColorBrewer
+Depends:
   gapminder
 Collate:
     'csvInputShinyMod.R'
     'dimAssignments.R'
     'selectLevels.R'
     'hello.R'
+RoxygenNote: 6.1.0
